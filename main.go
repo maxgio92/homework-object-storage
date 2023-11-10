@@ -1,7 +1,9 @@
 package main
 
-import "log"
+import (
+	"github.com/maxgio92/homework-object-storage/cmd/serve"
+)
 
 func main() {
-	log.Println("Hello world!!!")
+	serve.Execute()
 }

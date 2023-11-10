@@ -4,7 +4,9 @@ services:
   amazin-object-storage-node-1: &object-storage-node
     image: minio/minio
     command: server --console-address ":9001" /tmp/data
-    ports: [ "9001:9001" ] # You can open localhost:9001 in your browser to debug what objects are on this node.
+    ports:
+    - "9001:9001" # You can open localhost:9001 in your browser to debug what objects are on this node.
+    - "9011:9000"
     networks:
       amazin-object-storage:
         # Don't copy those addresses in your application. Use the local docker socket to get them.
@@ -16,7 +18,9 @@ services:
 
   amazin-object-storage-node-2:
     <<: *object-storage-node
-    ports: [ "9002:9001" ] # You can open localhost:9002 in your browser to debug what objects are on this node.
+    ports:
+    - "9002:9001" # You can open localhost:9002 in your browser to debug what objects are on this node.
+    - "9012:9000"
     networks:
       amazin-object-storage:
         ipv4_address: 169.253.0.3
@@ -26,7 +30,9 @@ services:
 
   amazin-object-storage-node-3:
     <<: *object-storage-node
-    ports: [ "9003:9001" ] # You can open localhost:9003 in your browser to debug what objects are on this node.
+    ports:
+    - "9003:9001" # You can open localhost:9003 in your browser to debug what objects are on this node.
+    - "9013:9000"
     networks:
       amazin-object-storage:
         ipv4_address: 169.253.0.4
@@ -37,7 +43,7 @@ services:
   gateway-container: # Here, this is where you can configure your gateway.
     # Feel free to change configuration options of this container, like the image, or the Dockerfile itself.
     build: .
-    command: sleep 36000 # Changeme: Put in just so the container stays on after being started.
+    command: sh -c "sleep 2 && object-storage-gateway serve -l 0.0.0.0:3000 --minio-label name=MinIO -v debug"
     ports: [ "3000:3000" ]
     networks:
       amazin-object-storage:
