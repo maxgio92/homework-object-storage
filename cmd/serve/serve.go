@@ -9,13 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maxgio92/homework-object-storage/internal/output"
-
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/maxgio92/homework-object-storage/internal/output"
 	"github.com/maxgio92/homework-object-storage/pkg/discovery"
 	"github.com/maxgio92/homework-object-storage/pkg/gateway"
 	"github.com/maxgio92/homework-object-storage/pkg/nodepool"
