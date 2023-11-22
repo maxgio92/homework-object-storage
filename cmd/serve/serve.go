@@ -18,7 +18,7 @@ import (
 
 	"github.com/maxgio92/homework-object-storage/pkg/discovery"
 	"github.com/maxgio92/homework-object-storage/pkg/gateway"
-	"github.com/maxgio92/homework-object-storage/pkg/minio"
+	"github.com/maxgio92/homework-object-storage/pkg/nodepool"
 )
 
 // Command represents the serve command.
@@ -42,7 +42,8 @@ func Execute() {
 	cmd := NewCmd()
 	err := cmd.Execute()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
@@ -115,23 +116,24 @@ func (c *Command) Run(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting minio endpoints")
 	}
+	if len(endpoints) == 0 {
+		return errNodesNotFound
+	}
 	c.logger.Debug("building minio node pool config")
 
 	// Build the MinIO node pool as the gateway backend.
-	nodeConfigs := []*minio.NodeConfig{}
-	for _, v := range endpoints {
-		nodeConfigs = append(nodeConfigs,
-			minio.NewNodeConfig(
-				v.Address,
-				v.Env[c.minioAccessKeyEnvVar],
-				v.Env[c.minioSecretKeyEnvVar],
-			),
+	nodeConfigs := make([]*nodepool.NodeConfig, len(endpoints))
+	for i := 0; i < len(endpoints); i++ {
+		nodeConfigs[i] = nodepool.NewNodeConfig(
+			endpoints[i].Address,
+			endpoints[i].Env[c.minioAccessKeyEnvVar],
+			endpoints[i].Env[c.minioSecretKeyEnvVar],
 		)
 	}
 
-	backend := minio.NewNodePool(
-		minio.WithNodeConfigs(nodeConfigs...),
-		minio.WithLogger(c.logger),
+	backend := nodepool.NewNodePool(
+		nodepool.WithNodeConfigs(nodeConfigs...),
+		nodepool.WithLogger(c.logger),
 	)
 	c.logger.Debug("building minio gateway")
 
