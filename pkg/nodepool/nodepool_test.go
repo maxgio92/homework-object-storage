@@ -1,6 +1,7 @@
-package minio
+package nodepool
 
 import (
+	"github.com/maxgio92/consistenthash"
 	"github.com/pkg/errors"
 	"net"
 	"reflect"
@@ -17,27 +18,30 @@ func TestNewNodePool(t *testing.T) {
 	nodeConfig := NewNodeConfig("localhost:3000", "mykey", "mysecret")
 	nodeConfig2 := NewNodeConfig("localhost:3001", "mykey", "mysecret")
 
+	ring := consistenthash.NewRing()
+	ring.AddNode(nodeConfig.endpoint)
+	ring.AddNode(nodeConfig2.endpoint)
+
 	testCases := []struct {
 		name  string
 		given []Option
 		want  *NodePool
 	}{
 		{name: "with no option", given: []Option{}, want: &NodePool{
-			objectsToNodeID: make(map[string]string),
-			nodeIDToClient:  make(map[string]*minio.Client),
-			nodeIDToConfig:  make(map[string]*NodeConfig),
+			nodeIdToClient: make(map[string]*minio.Client),
+			nodeIdToConfig: make(map[string]*NodeConfig),
+			ring:           consistenthash.NewRing(),
 		}},
 		{name: "with logger", given: []Option{WithLogger(logger)}, want: &NodePool{
-			logger:          logger,
-			objectsToNodeID: make(map[string]string),
-			nodeIDToClient:  make(map[string]*minio.Client),
-			nodeIDToConfig:  make(map[string]*NodeConfig),
+			logger:         logger,
+			nodeIdToClient: make(map[string]*minio.Client),
+			nodeIdToConfig: make(map[string]*NodeConfig),
+			ring:           consistenthash.NewRing(),
 		}},
 		{name: "with node configs", given: []Option{WithNodeConfigs(nodeConfig, nodeConfig2)}, want: &NodePool{
-			objectsToNodeID: make(map[string]string),
-			nodeIDToClient:  make(map[string]*minio.Client),
-			nodeIDToConfig:  map[string]*NodeConfig{nodeConfig.endpoint: nodeConfig, nodeConfig2.endpoint: nodeConfig2},
-			roundRobin:      newRoundRobin(nodeConfig.endpoint, nodeConfig2.endpoint),
+			nodeIdToClient: make(map[string]*minio.Client),
+			nodeIdToConfig: map[string]*NodeConfig{nodeConfig.endpoint: nodeConfig, nodeConfig2.endpoint: nodeConfig2},
+			ring:           ring,
 		}},
 	}
 
@@ -86,7 +90,7 @@ func TestNodePoolInit(t *testing.T) {
 				if got == nil {
 					t.Errorf("node pool is nil after init")
 				}
-				for _, c := range got.nodeIDToClient {
+				for _, c := range got.nodeIdToClient {
 					if c == nil {
 						t.Error("client is nil")
 					}

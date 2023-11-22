@@ -6,17 +6,17 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/maxgio92/homework-object-storage/pkg/minio"
+	"github.com/maxgio92/homework-object-storage/pkg/nodepool"
 	"github.com/sirupsen/logrus"
 )
 
 func TestNewGateway(t *testing.T) {
 	logger := logrus.StandardLogger()
 
-	node := minio.NewNodeConfig("localhost:9004", "mykey", "mysecret")
-	node2 := minio.NewNodeConfig("localhost:9005", "mykey", "mysecret")
+	node := nodepool.NewNodeConfig("localhost:9004", "mykey", "mysecret")
+	node2 := nodepool.NewNodeConfig("localhost:9005", "mykey", "mysecret")
 
-	nodePool := minio.NewNodePool(minio.WithNodeConfigs(node, node2), minio.WithLogger(logger))
+	nodePool := nodepool.NewNodePool(nodepool.WithNodeConfigs(node, node2), nodepool.WithLogger(logger))
 
 	srv := &http.Server{Addr: "127.0.0.1:3000"}
 	router := mux.NewRouter()

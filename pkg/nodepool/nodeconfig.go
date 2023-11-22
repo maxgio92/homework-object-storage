@@ -1,4 +1,4 @@
-package minio
+package nodepool
 
 // NodeConfig represents the set of configurations of a MinIO node.
 type NodeConfig struct {

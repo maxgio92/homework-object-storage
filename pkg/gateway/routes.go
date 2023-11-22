@@ -15,17 +15,17 @@ import (
 )
 
 var (
-	ErrObjectIDMissing  = errors.New("object id missing")
-	ErrObjectIDNotValid = errors.New("object id not valid")
-	ErrNodePoolEmpty    = errors.New("node pool empty")
-	ErrClientBuild      = errors.New("error building client")
-	ErrReadingBody      = errors.New("error reading body")
+	ErrObjectKeyMissing  = errors.New("object key missing")
+	ErrObjectKeyNotValid = errors.New("object key not valid")
+	ErrNodePoolEmpty     = errors.New("node pool empty")
+	ErrClientBuild       = errors.New("error building client")
+	ErrReadingBody       = errors.New("error reading body")
 )
 
 func (g *Gateway) AddObjectRoutes(r *mux.Router) {
 	objectRouter := r.PathPrefix("/object").Subrouter()
-	objectRouter.Methods(http.MethodGet).Path(fmt.Sprintf("/{id:%s}", objectIDRegex)).HandlerFunc(g.GetObjectHandler)
-	objectRouter.Methods(http.MethodPut).Path(fmt.Sprintf("/{id:%s}", objectIDRegex)).HandlerFunc(g.PutObjectHandler)
+	objectRouter.Methods(http.MethodGet).Path(fmt.Sprintf("/{key:%s}", objectKeyRegex)).HandlerFunc(g.GetObjectHandler)
+	objectRouter.Methods(http.MethodPut).Path(fmt.Sprintf("/{id:%s}", objectKeyRegex)).HandlerFunc(g.PutObjectHandler)
 }
 
 func (g *Gateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,17 +35,17 @@ func (g *Gateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
 func (g *Gateway) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	objectID := vars["id"]
-	if objectID == "" {
+	objectKey := vars["key"]
+	if objectKey == "" {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrObjectIDMissing.Error())
+		json.NewEncoder(w).Encode(ErrObjectKeyMissing.Error())
 		return
 	}
-	if len(objectID) > maxObjectIDsize {
-		g.logger.Debug("requested object id is not valid")
+	if len(objectKey) > maxObjectKeysize {
+		g.logger.Debug("requested object key is not valid")
 
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrObjectIDNotValid.Error())
+		json.NewEncoder(w).Encode(ErrObjectKeyNotValid.Error())
 		return
 	}
 
@@ -55,9 +55,11 @@ func (g *Gateway) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodeID := g.nodePool.ObjectToNodeID(objectID)
+	nodeID := g.nodePool.ObjectToNodeID(objectKey)
 	if nodeID == "" {
-		nodeID = g.nodePool.Next()
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrNodePoolEmpty.Error())
+		return
 	}
 
 	client := g.nodePool.NodeClient(nodeID)
@@ -78,7 +80,7 @@ func (g *Gateway) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	obj, err := client.GetObject(r.Context(), bucket, objectID, minio.GetObjectOptions{})
+	obj, err := client.GetObject(r.Context(), bucket, objectKey, minio.GetObjectOptions{})
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(err.Error())
@@ -99,7 +101,7 @@ func (g *Gateway) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	g.logger.
 		WithField("operation", http.MethodGet).
-		WithField("object id", objectID).
+		WithField("object key", objectKey).
 		WithField("node id", nodeID).
 		Info("request")
 
@@ -118,17 +120,17 @@ func (g *Gateway) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	objectID := vars["id"]
-	if objectID == "" {
+	objectKey := vars["id"]
+	if objectKey == "" {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(ErrObjectIDMissing.Error())
+		json.NewEncoder(w).Encode(ErrObjectKeyMissing.Error())
 		return
 	}
-	if len(objectID) > maxObjectIDsize {
-		g.logger.Debug("requested object id is not valid")
+	if len(objectKey) > maxObjectKeysize {
+		g.logger.Debug("requested object key is not valid")
 
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrObjectIDNotValid.Error())
+		json.NewEncoder(w).Encode(ErrObjectKeyNotValid.Error())
 		return
 	}
 
@@ -138,9 +140,11 @@ func (g *Gateway) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodeID := g.nodePool.ObjectToNodeID(objectID)
+	nodeID := g.nodePool.ObjectToNodeID(objectKey)
 	if nodeID == "" {
-		nodeID = g.nodePool.Next()
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrNodePoolEmpty.Error())
+		return
 	}
 	if nodeID == "" {
 		g.logger.Debug("node id is empty")
@@ -167,7 +171,7 @@ func (g *Gateway) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upload, err := client.PutObject(r.Context(), bucket, objectID, buf, nRead,
+	upload, err := client.PutObject(r.Context(), bucket, objectKey, buf, nRead,
 		minio.PutObjectOptions{ContentType: "application/octet-stream"},
 	)
 	if err != nil {
@@ -176,11 +180,9 @@ func (g *Gateway) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g.nodePool.SetObjectNodeID(objectID, nodeID)
-
 	g.logger.
 		WithField("operation", http.MethodPut).
-		WithField("object id", upload.Key).
+		WithField("object key", upload.Key).
 		WithField("node id", nodeID).
 		Info("request")
 

@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/maxgio92/homework-object-storage/internal/output"
-	"github.com/maxgio92/homework-object-storage/pkg/minio"
+	"github.com/maxgio92/homework-object-storage/pkg/nodepool"
 )
 
 const (
@@ -26,7 +26,7 @@ type Gateway struct {
 	r   *mux.Router
 	srv *http.Server
 
-	nodePool *minio.NodePool
+	nodePool *nodepool.NodePool
 }
 
 type Option func(gw *Gateway)
@@ -49,7 +49,7 @@ func WithRouter(router *mux.Router) Option {
 	}
 }
 
-func WithNodePool(nodePool *minio.NodePool) Option {
+func WithNodePool(nodePool *nodepool.NodePool) Option {
 	return func(gw *Gateway) {
 		gw.nodePool = nodePool
 	}
