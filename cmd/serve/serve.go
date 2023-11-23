@@ -37,15 +37,6 @@ type Command struct {
 	minioSecretKeyEnvVar         string
 }
 
-func Execute() {
-	cmd := NewCmd()
-	err := cmd.Execute()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
 // NewCmd returns a new find command.
 func NewCmd() *cobra.Command {
 	c := new(Command)
